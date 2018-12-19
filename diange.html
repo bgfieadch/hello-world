@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="js/jquery-3.3.1.min.js"></script>
+    <script src="js/tplayer.js"></script>
+</head>
+<style>
+    * {
+        padding: 0px;
+        margin: 0px;
+    }
+
+    #progress {
+        width: 300px;
+        height: 5px;
+        background-color: #232323;
+        position: relative;
+        margin-top: 50px;
+        margin-left: 50px;
+        left: 50px;
+        border-radius:20px;
+    }
+
+    #progress #progress_inner {
+        width: 30px;
+        height: 5px;
+        background-color: #858585;
+        border-radius:20px;
+        transition: width 0.5s;
+        -webkit-transition: width 0.5s;
+        /* Safari */
+    }
+
+    #progress #progress_inner .progress-bar-pointer {
+        height: 10px;
+        width: 10px;
+        border-radius: 50%;
+        position: relative;
+        right: 0;
+        background: red;
+    }
+</style>
+
+<body>
+    <div>
+        <h4 id="name"></h4>
+        <br>
+        <audio id="audio" src="" controls autoplay="true" style="display: none;"></audio><br />
+    </div>
+    <br><br>
+    <!-- <img src="https://y.gtimg.cn/music/photo_new/T002R300x300M000000LCFWw0zj6lG.jpg?max_age=2592000" /> -->
+
+    <div id="progress">
+        <div id="progress_inner">
+            <span class="progress-bar-pointer"></span>
+        </div>
+    </div>
+    <br><br><br><br>
+    <br>
+    <div>
+        <button id="btn_play_pause">播放/暂停</button>
+        <button id="btn_play">播放</button>
+        <button id="btn_pause">暂停</button>
+        <button id="btn_pre">上一首</button>
+        <button id="btn_next">下一首</button>
+        <button id="btn_loop">单曲不循环</button>
+        <input type="text" id="seek" value="280" />
+        <button id="fastseek">播放时间</button>
+        <a href='https://m7.music.126.net/20181217150152/0d697203b8f92a8acc9a26b5c28f336c/ymusic/1853/f3ee/6cd1/474f216992fd55233f9e55b7a7a13698.mp3'
+            download="123.mp3">下载</a>
+    </div>
+    </div>
+    <div id="msgbox"></div>
+    <input id='searchword' type='text' /><button id="click">点击搜索</button>
+    <ul id="musiclist">
+
+    </ul>
+</body>
+<script>
+    window.onload = function () {
+        var audio = document.getElementById("audio");
+        var progress = document.getElementById("progress");
+        var progress_inner = document.getElementById("progress_inner");
+
+        var btn_play = document.getElementById("btn_play");
+        var btn_pause = document.getElementById("btn_pause");
+        var btn_play_pause = document.getElementById("btn_play_pause");
+        var btn_loop = document.getElementById("btn_loop");
+        var btn3 = document.getElementById("btn_pre");
+        var btn4 = document.getElementById("btn_next");
+
+        btn_play.onclick = music_play;
+        btn_pause.onclick = music_pause;
+        btn_play_pause.onclick = music_play_pause;
+        btn_loop.onclick = music_loop;
+        btn3.onclick = music_pre;
+        btn4.onclick = music_next;
+
+        setInterval(updateProgress, 300);
+        progress.onclick = updateCurrentTime;
+    }
+</script>
+
+
+<script>
+    function show(data) {
+        $(musiclist).empty();
+        for (var i = 0; i < data.data.song.list.length; i++) {
+            var mid = data.data.song.list[i].mid;
+            var name = data.data.song.list[i].name;
+            $(musiclist).append("<li>" + mid + name + "<button value='" + mid +
+                "' onclick='alert(this.value,'"+name+"')'>点歌</button></li>");
+        }
+    }
+
+    $(document).ready(function () {
+        $("#click").click(function () {
+            var w = $(searchword).val();
+            searchMusic(w, 1, 10, function (data) {
+                $(musiclist).empty();
+                for (var i = 0; i < data.data.song.list.length; i++) {
+                    var mid = data.data.song.list[i].mid;
+                    var name = data.data.song.list[i].name;
+                    $(musiclist).append("<li>" + name + "<button value='" + mid +
+                        "' onclick='diange(this.value)'>点歌</button></li>");
+                }
+            });
+        });
+    });
+
+    function diange(id,name){
+        urlMusic(id,function(data){
+            var address = 'http://dl.stream.qqmusic.qq.com/';
+            var purl = data.req_0.data.midurlinfo[0].purl;
+            $(audio).attr("src",address+purl)
+            $("#name").html(name);
+        });
+        
+    }
+
+
+    function searchMusic(w, p, n, callback) {
+        p = p || 1;
+        n = n || 20;
+        callback = callback || myCallback;
+        var rstr = "getUCGI" + randomString(10);
+        var srarch_str = '&jsonpCallback=' + rstr + '&p=' + p + '&n=' + n + '&w=' + w;
+        $.ajax({
+            url: 'https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&new_json=1&remoteplace=txt.yqq.center&searchid=47381074265493541&t=0&aggr=1&cr=1&catZhida=1&lossless=0&flag_qc=0&g_tk=5381&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq&needNewCode=0' +
+                srarch_str,
+            type: "GET",
+            dataType: "jsonp",
+            jsonpCallback: rstr,
+            success: function (data) {
+                callback(data);
+            }
+        });
+    }
+
+    function infoMusic(songid, callback) {
+        callback = callback || myCallback;
+        var rstr = "getUCGI" + randomString(10);
+        $.ajax({
+            url: 'https://u.y.qq.com/cgi-bin/musicu.fcg?callback=' + rstr + '&jsonpCallback=' + rstr +
+                '&g_tk=5318&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq&needNewCode=0&data={"songinfo":{"method":"get_song_detail_yqq","param":{"song_type":0,"song_mid":"' +
+                songid + '","song_id":407886},"module":"music.pf_song_detail_svr"}}',
+            type: "GET",
+            dataType: "jsonp",
+            jsonpCallback: rstr,
+            success: function (data) {
+                callback(data);
+            }
+        });
+    }
+
+    function picMusic(mid, callback) {
+        callback = callback || myCallback;
+        var pic_url = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000' + mid + '.jpg?max_age=2592000';
+        callback(pic_url);
+    }
+
+    function urlMusic(id, callback) {
+        callback = callback || myCallback;
+        var rstr = "getplaysongvkey" + randomString(10);
+        $.ajax({
+            url: 'https://u.y.qq.com/cgi-bin/musicu.fcg?jsonpCallback=' + rstr + '&callback=' + rstr +
+                '&format=jsonp&inCharset=utf8&outCharset=utf-8&platform=yqq&data={"req":{"module":"CDN.SrfCdnDispatchServer","method":"GetCdnDispatch","param":{"guid":"5592486576","calltype":0,"userip":""}},"req_0":{"module":"vkey.GetVkeyServer","method":"CgiGetVkey","param":{"guid":"5592486576","songmid":["' +
+                id +
+                '"],"songtype":[0],"uin":"0","loginflag":0,"platform":"20"}},"comm":{"uin":0,"format":"json","ct":20,"cv":0}}',
+            type: "GET",
+            dataType: "jsonp",
+            jsonpCallback: rstr,
+            success: function (data) {
+                callback(data);
+            }
+        });
+    }
+
+    // function lrcMusic(musicid,callback){
+    //     callback = callback || myCallback;
+    //     var rstr = "jsonp" //+randomString(10);
+    //     $.ajax({
+    //         url: 'https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric.fcg?nobase64=0&musicid='+musicid+'&callback='+rstr+'&jsonpCallback='+rstr+'&g_tk=5381&loginUin=0&hostUin=0&format=jsonp&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq&needNewCode=0',
+    //         type: "GET",
+    //         headers: {referer:"https://y.qq.com/"},
+    //         dataType: "jsonp",
+    //         jsonpCallback: rstr,
+    //         success: function (data) {
+    //             callback(data);
+    //         }
+    //     });
+    // }
+
+    function myCallback(data) {
+        var result = JSON.stringify(data)
+        console.info(result);
+    }
+
+    function randomString(len) {
+        len = len || 32;
+        var $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';
+        var maxPos = $chars.length;
+        var pwd = '';
+        for (i = 0; i < len; i++) {
+            pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+        }
+        return pwd;
+    }
+</script>
+
+</html>
